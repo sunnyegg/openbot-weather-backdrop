@@ -1,6 +1,6 @@
 # openbot-weather-backdrop
 
-Bahasa / Language: **Indonesia** | [English](README.en.md)
+Bahasa / Language: [Indonesia](README.md) | **English**
 
 A living landscape with live Jakarta weather, made as an OpenBot backdrop.
 

@@ -1,6 +1,6 @@
 # openbot-weather-backdrop
 
-Bahasa / Language: [Indonesia](README.md) | **English**
+Bahasa / Language: **Indonesia** | [English](README.en.md)
 
 Landscape hidup dengan cuaca live Jakarta, dibuat sebagai backdrop untuk OpenBot.
 
