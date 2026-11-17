@@ -1,5 +1,7 @@
 # openbot-weather-backdrop
 
+Live: https://sunnyegg.github.io/openbot-weather-backdrop/ - cuaca-nya ke-update sendiri.
+
 Bahasa / Language: **Indonesia** | [English](README.en.md)
 
 Landscape hidup dengan cuaca live Jakarta, dibuat sebagai backdrop untuk OpenBot.
