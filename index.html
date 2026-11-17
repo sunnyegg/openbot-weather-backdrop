@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>Landscape + cuaca Jakarta</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #0a1220;
+      }
+      #scene {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+      }
+      #sky {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, #0b1a33 0%, #12325a 55%, #1d4a6e 100%);
+      }
+      #haze {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 58%;
+        pointer-events: none;
+        opacity: 0.55;
+      }
+      #stars {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+      }
+      #stars i {
+        position: absolute;
+        border-radius: 50%;
+        background: #fff;
+        display: block;
+      }
+      #scrim {
+        position: absolute;
+        inset: 0;
+        background: rgba(7, 12, 22, 0.3);
+        pointer-events: none;
+      }
+      svg#hills {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      #bloom {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+      }
+      #disc {
+        position: absolute;
+        left: 50%;
+        top: 30%;
+        width: clamp(52px, 9vmin, 92px);
+        height: clamp(52px, 9vmin, 92px);
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background: #fff3d6;
+        box-shadow:
+          0 0 50px 18px rgba(255, 232, 180, 0.55),
+          0 0 170px 70px rgba(255, 214, 150, 0.28);
+      }
+      #clouds,
+      #rain {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #disc {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="scene">
+      <div id="sky"></div>
+      <div id="stars"></div>
+      <div id="haze"></div>
+      <div id="disc"></div>
+      <div id="bloom"></div>
+      <canvas id="clouds"></canvas>
+      <div id="scrim"></div>
+      <svg id="hills" viewBox="0 0 1440 900" preserveAspectRatio="none" aria-hidden="true">
+        <path
+          id="far"
+          d="M0,700 C230,640 420,672 620,650 C820,628 1000,690 1200,660 C1330,641 1400,670 1440,654 L1440,900 L0,900 Z"
+        />
+        <path
+          id="mid"
+          d="M0,762 C200,708 380,744 560,728 C760,710 900,760 1090,734 C1250,712 1350,750 1440,722 L1440,900 L0,900 Z"
+        />
+        <path
+          id="near"
+          d="M0,822 C180,788 340,810 520,804 C720,797 880,834 1080,814 C1260,794 1370,824 1440,806 L1440,900 L0,900 Z"
+        />
+      </svg>
+      <canvas id="rain"></canvas>
+    </div>
+    <script>
+      (function () {
+        var stops = [
+          {
+            h: 0,
+            top: "#070f22",
+            mid: "#0d2244",
+            bot: "#142a4a",
+            far: "#16294a",
+            mh: "#101d36",
+            nr: "#0a1327",
+            sun: "#e8eeff",
+            glow: "rgba(150,180,255,.35)",
+            glow2: "rgba(110,150,255,.16)",
+          },
+          {
+            h: 4.5,
+            top: "#0b1930",
+            mid: "#16335c",
+            bot: "#2a557e",
+            far: "#203556",
+            mh: "#172441",
+            nr: "#0d1828",
+            sun: "#dfe8ff",
+            glow: "rgba(160,190,255,.35)",
+            glow2: "rgba(120,160,255,.16)",
+          },
+          {
+            h: 6,
+            top: "#3a4a7c",
+            mid: "#a3718c",
+            bot: "#ef9a68",
+            far: "#5b4a6a",
+            mh: "#3a3352",
+            nr: "#221f38",
+            sun: "#ffb884",
+            glow: "rgba(255,160,95,.55)",
+            glow2: "rgba(255,130,85,.26)",
+          },
+          {
+            h: 7.5,
+            top: "#68a0dc",
+            mid: "#d3e7f7",
+            bot: "#fff8ea",
+            far: "#a8bec8",
+            mh: "#6b8496",
+            nr: "#3b5062",
+            sun: "#fff6e0",
+            glow: "rgba(255,245,215,.62)",
+            glow2: "rgba(255,230,185,.32)",
+          },
+          {
+            h: 12,
+            top: "#3a8fe0",
+            mid: "#b4d6f0",
+            bot: "#f2fbff",
+            far: "#a9c8c7",
+            mh: "#5f957c",
+            nr: "#3d6b46",
+            sun: "#ffffff",
+            glow: "rgba(255,254,244,.70)",
+            glow2: "rgba(255,251,230,.34)",
+          },
+          {
+            h: 16.5,
+            top: "#4a86cd",
+            mid: "#b0d0eb",
+            bot: "#fcf0d6",
+            far: "#9db4c0",
+            mh: "#587679",
+            nr: "#334e49",
+            sun: "#fff6da",
+            glow: "rgba(255,244,210,.60)",
+            glow2: "rgba(255,228,180,.30)",
+          },
+          {
+            h: 18,
+            top: "#4a3f70",
+            mid: "#b06f84",
+            bot: "#f09163",
+            far: "#5d4460",
+            mh: "#3a2a45",
+            nr: "#221829",
+            sun: "#ffa869",
+            glow: "rgba(255,140,80,.50)",
+            glow2: "rgba(255,112,66,.24)",
+          },
+          {
+            h: 19.5,
+            top: "#18213f",
+            mid: "#333c68",
+            bot: "#655379",
+            far: "#2b3454",
+            mh: "#1e2739",
+            nr: "#121828",
+            sun: "#ffd2b0",
+            glow: "rgba(255,180,150,.30)",
+            glow2: "rgba(180,150,220,.14)",
+          },
+          {
+            h: 21,
+            top: "#080f24",
+            mid: "#0e2246",
+            bot: "#172c4c",
+            far: "#16294a",
+            mh: "#101d36",
+            nr: "#0a1327",
+            sun: "#e8eeff",
+            glow: "rgba(150,180,255,.32)",
+            glow2: "rgba(110,150,255,.15)",
+          },
+          {
+            h: 24,
+            top: "#070f22",
+            mid: "#0d2244",
+            bot: "#142a4a",
+            far: "#16294a",
+            mh: "#101d36",
+            nr: "#0a1327",
+            sun: "#e8eeff",
+            glow: "rgba(150,180,255,.35)",
+            glow2: "rgba(110,150,255,.16)",
+          },
+        ];
+
+        // ---- data cuaca: snapshot saat halaman dipasang, lalu di-refresh dari API ----
+        var WX = {
+          cloud: 99,
+          precip: 0.1,
+          code: 51,
+          temp: 28.8,
+          wind: 4.6,
+          at: "2026-11-17 17:45 WIB",
+        };
+        var LAT = "-6.2088",
+          LON = "106.8456";
+        var API =
+          "https://api.open-meteo.com/v1/forecast?latitude=" +
+          LAT +
+          "&longitude=" +
+          LON +
+          "&current=temperature_2m,cloud_cover,precipitation,weather_code,wind_speed_10m&timezone=Asia%2FJakarta";
+
+        function rainLevel(code, precip) {
+          var lv = 0;
+          if (code >= 95) lv = 0.9;
+          else if (code === 65 || code === 67) lv = 0.85;
+          else if (code === 63 || code === 66) lv = 0.7;
+          else if (code === 61) lv = 0.55;
+          else if (code === 82) lv = 0.8;
+          else if (code === 81) lv = 0.62;
+          else if (code === 80) lv = 0.45;
+          else if (code === 55) lv = 0.42;
+          else if (code === 53 || code === 56 || code === 57) lv = 0.32;
+          else if (code === 51) lv = 0.22;
+          if (lv === 0 && precip > 0) lv = Math.min(0.5, precip / 2);
+          return lv;
+        }
+
+        var sky = document.getElementById("sky"),
+          disc = document.getElementById("disc"),
+          stars = document.getElementById("stars"),
+          haze = document.getElementById("haze"),
+          scrim = document.getElementById("scrim"),
+          bloom = document.getElementById("bloom"),
+          far = document.getElementById("far"),
+          mid = document.getElementById("mid"),
+          near = document.getElementById("near"),
+          ccv = document.getElementById("clouds"),
+          rcv = document.getElementById("rain");
+
+        function hex(c) {
+          if (c.charAt(0) === "r") {
+            var n = c.match(/[\d.]+/g).map(Number);
+            return [n[0], n[1], n[2], n.length > 3 ? n[3] : 1];
+          }
+          var v = c.replace("#", "");
+          return [
+            parseInt(v.slice(0, 2), 16),
+            parseInt(v.slice(2, 4), 16),
+            parseInt(v.slice(4, 6), 16),
+            1,
+          ];
+        }
+        function mix(a, b, t) {
+          var A = hex(a),
+            B = hex(b),
+            r = [];
+          for (var i = 0; i < 4; i++) r.push(A[i] + (B[i] - A[i]) * t);
+          return (
+            "rgba(" +
+            Math.round(r[0]) +
+            "," +
+            Math.round(r[1]) +
+            "," +
+            Math.round(r[2]) +
+            "," +
+            Math.round(r[3] * 100) / 100 +
+            ")"
+          );
+        }
+        function rgba(c, a) {
+          var v = hex(c);
+          return (
+            "rgba(" +
+            Math.round(v[0]) +
+            "," +
+            Math.round(v[1]) +
+            "," +
+            Math.round(v[2]) +
+            "," +
+            a +
+            ")"
+          );
+        }
+        function at(hour) {
+          for (var i = 0; i < stops.length - 1; i++) {
+            if (hour >= stops[i].h && hour <= stops[i + 1].h) {
+              var t = (hour - stops[i].h) / (stops[i + 1].h - stops[i].h || 1),
+                out = {};
+              for (var k in stops[i]) if (k !== "h") out[k] = mix(stops[i][k], stops[i + 1][k], t);
+              return out;
+            }
+          }
+          return stops[0];
+        }
+
+        for (var i = 0; i < 90; i++) {
+          var el = document.createElement("i"),
+            s = Math.random() < 0.18 ? 2 : 1;
+          el.style.left = Math.random() * 100 + "%";
+          el.style.top = Math.random() * 58 + "%";
+          el.style.width = s + "px";
+          el.style.height = s + "px";
+          el.style.opacity = 0.35 + Math.random() * 0.5;
+          stars.appendChild(el);
+        }
+
+        // ---- canvas: awan & hujan ----
+        var cctx = ccv.getContext("2d"),
+          rctx = rcv.getContext("2d");
+        var W = 0,
+          H = 0,
+          DPR = 1;
+        function sizeCanvas() {
+          DPR = Math.min(2, window.devicePixelRatio || 1);
+          W = window.innerWidth;
+          H = window.innerHeight;
+          [ccv, rcv].forEach(function (c) {
+            c.width = Math.round(W * DPR);
+            c.height = Math.round(H * DPR);
+            c.style.width = W + "px";
+            c.style.height = H + "px";
+          });
+          cctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+          rctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+          buildClouds();
+          buildDrops();
+        }
+
+        var clouds = [],
+          drops = [];
+        function buildClouds() {
+          clouds = [];
+          var n = 22;
+          for (var i = 0; i < n; i++) {
+            clouds.push({
+              x: Math.random() * W,
+              y: H * (0.02 + Math.random() * 0.46),
+              r: W * (0.09 + Math.random() * 0.2),
+              sx: 0.35 + Math.random() * 0.55,
+              a: 0.3 + Math.random() * 0.4,
+              squish: 0.42 + Math.random() * 0.25,
+            });
+          }
+        }
+        function buildDrops() {
+          drops = [];
+          for (var i = 0; i < 520; i++) {
+            drops.push({
+              x: Math.random() * W,
+              y: Math.random() * H,
+              len: 6 + Math.random() * 16,
+              spd: 0.7 + Math.random() * 0.9,
+              a: 0.18 + Math.random() * 0.32,
+              w: Math.random() < 0.3 ? 1.4 : 0.9,
+            });
+          }
+        }
+
+        var flash = 0,
+          nextBolt = 0;
+        var lastFrame = 0,
+          hourNow = 17.8,
+          dayNow = true,
+          elevNow = 0,
+          ocNow = 0,
+          rainNow = 0;
+
+        function paint() {
+          var t = performance.now();
+          var dt = Math.min(0.05, (t - (lastFrame || t)) / 1000);
+          lastFrame = t;
+
+          var now = new Date();
+          var h = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+          hourNow = h;
+          var day = h >= 6 && h < 18;
+          dayNow = day;
+          var elev = day ? Math.sin(Math.PI * Math.min(1, Math.max(0, (h - 6) / 12))) : 0;
+          elevNow = elev;
+
+          var rl = rainLevel(WX.code, WX.precip);
+          rainNow = rl;
+          var cloud = (WX.cloud == null ? 0 : WX.cloud) / 100;
+          var fog = WX.code === 45 ? 0.5 : WX.code === 48 ? 0.8 : 0;
+          var oc = Math.min(1, cloud * (0.5 + 0.5 * rl) + fog * 0.6);
+          ocNow = oc;
+
+          // palet langit, digeser ke abu-abu sesuai tutupan awan
+          var p = at(h);
+          var g = day
+            ? {
+                top: "#5e6975",
+                mid: "#78828d",
+                bot: "#959ba1",
+                far: "#6f7a82",
+                mh: "#47524f",
+                nr: "#2e3733",
+              }
+            : {
+                top: "#111722",
+                mid: "#18202d",
+                bot: "#1f2734",
+                far: "#192030",
+                mh: "#111623",
+                nr: "#090c14",
+              };
+          var k = Math.min(0.95, oc * 0.95);
+          var top = mix(p.top, g.top, k),
+            md = mix(p.mid, g.mid, k),
+            bt = mix(p.bot, g.bot, k);
+
+          sky.style.background =
+            "linear-gradient(to bottom," + top + " 0%," + md + " 55%," + bt + " 100%)";
+          far.setAttribute("fill", mix(p.far, g.far, k));
+          mid.setAttribute("fill", mix(p.mh, g.mh, k));
+          near.setAttribute("fill", mix(p.nr, g.nr, k));
+
+          var pos;
+          if (day) {
+            var st = Math.min(1, Math.max(0, (h - 6) / 12));
+            pos = { x: 8 + 84 * st, y: 73 - Math.sin(Math.PI * st) * (73 - 10) };
+            disc.style.left = pos.x + "%";
+            disc.style.top = pos.y + "%";
+            disc.style.background = p.sun;
+            disc.style.boxShadow = "0 0 60px 22px " + p.glow + ",0 0 200px 90px " + p.glow2;
+            disc.style.width = "clamp(52px,9vmin,92px)";
+            disc.style.height = "clamp(52px,9vmin,92px)";
+            disc.style.opacity = (1 - 0.72 * oc).toFixed(2);
+          } else {
+            var hn = h < 6 ? h + 24 : h;
+            var tt = Math.min(1, Math.max(0, (hn - 18) / 12));
+            pos = { x: 8 + 84 * tt, y: 66 - Math.sin(Math.PI * tt) * (66 - 10) };
+            disc.style.left = pos.x + "%";
+            disc.style.top = pos.y + "%";
+            disc.style.background = "#eef2ff";
+            disc.style.boxShadow =
+              "0 0 34px 12px rgba(200,215,255,.30),0 0 120px 50px rgba(150,175,255,.14)";
+            disc.style.width = "clamp(34px,6vmin,58px)";
+            disc.style.height = "clamp(34px,6vmin,58px)";
+            disc.style.opacity = (1 - 0.75 * oc).toFixed(2);
+          }
+
+          var scrimA = 0.34 - 0.24 * Math.pow(elev, 0.55) + 0.06 * rl;
+          scrim.style.background = "rgba(7,12,22," + Math.min(0.55, scrimA).toFixed(3) + ")";
+
+          var bAlpha = (day ? 0.1 + 0.2 * elev : 0.07) * (1 - 0.8 * oc);
+          bloom.style.opacity = "1";
+          bloom.style.background =
+            "radial-gradient(circle at " +
+            pos.x +
+            "% " +
+            pos.y +
+            "%, " +
+            rgba(p.sun, bAlpha) +
+            " 0%, " +
+            rgba(p.sun, bAlpha * 0.45) +
+            " 30%, rgba(255,255,255,0) 62%)";
+
+          haze.style.background =
+            "linear-gradient(to top," + rgba(bt, 0.34) + "," + rgba(bt, 0) + ")";
+          haze.style.opacity = Math.min(
+            0.92,
+            (day ? 0.5 : 0.25) + 0.42 * Math.max(oc, fog),
+          ).toFixed(2);
+
+          stars.style.opacity =
+            (day
+              ? 0
+              : Math.max(0, Math.min(1, h < 6 ? (6 - h) / 2 : h >= 18 ? (h - 18) / 2 : 0) * 0.9)) *
+            (1 - 0.95 * oc);
+
+          // --- awan ---
+          cctx.clearRect(0, 0, W, H);
+          var nClouds = Math.round(clouds.length * Math.min(1, cloud * 1.6));
+          var cloudBase = day ? mix(md, "#55606c", 0.3 + 0.45 * oc) : "#232b3c";
+          var colHex = mix(cloudBase, "#3f4a57", rl * 0.4);
+          if (!day) colHex = mix(colHex, "#171d29", 0.55);
+          var baseA = day ? 0.26 + 0.45 * oc : 0.15 + 0.35 * oc;
+          var drift = 0.5 + (WX.wind || 0) * 0.35;
+          for (var ci = 0; ci < nClouds; ci++) {
+            var c = clouds[ci];
+            c.x += drift * c.sx * dt;
+            if (c.x - c.r > W) c.x = -c.r;
+            var al = c.a * baseA * (0.75 + 0.5 * rl);
+            var r = c.r;
+            var grd = cctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, r);
+            grd.addColorStop(0, rgba(colHex, Math.min(0.55, al)));
+            grd.addColorStop(0.45, rgba(colHex, Math.min(0.32, al * 0.6)));
+            grd.addColorStop(1, rgba(colHex, 0));
+            cctx.save();
+            cctx.translate(c.x, c.y);
+            cctx.scale(1, c.squish);
+            cctx.translate(-c.x, -c.y);
+            cctx.fillStyle = grd;
+            cctx.beginPath();
+            cctx.arc(c.x, c.y, r, 0, 6.2832);
+            cctx.fill();
+            cctx.restore();
+          }
+
+          // --- hujan ---
+          rctx.clearRect(0, 0, W, H);
+          if (rl > 0.02) {
+            var count = Math.round(drops.length * Math.min(1, rl * 1.05));
+            var slant = Math.max(-0.35, Math.min(0.35, (WX.wind || 0) * 0.035));
+            rctx.lineCap = "round";
+            for (var di = 0; di < count; di++) {
+              var d = drops[di];
+              var spd = (620 + 520 * rl) * d.spd;
+              d.y += spd * dt;
+              d.x += spd * dt * slant * 0.55;
+              if (d.y > H + 20) {
+                d.y = -20;
+                d.x = Math.random() * W;
+              }
+              if (d.x < -30) d.x = W + 20;
+              if (d.x > W + 30) d.x = -20;
+              var len = d.len * (0.55 + 0.9 * rl);
+              rctx.strokeStyle = rgba("#cfe3f2", Math.min(0.55, d.a * (0.45 + 0.75 * rl)));
+              rctx.lineWidth = d.w;
+              rctx.beginPath();
+              rctx.moveTo(d.x, d.y);
+              rctx.lineTo(d.x - len * slant * 0.55, d.y + len);
+              rctx.stroke();
+            }
+          }
+
+          // --- kilat untuk kode badai ---
+          if (WX.code >= 95) {
+            if (t > nextBolt) {
+              flash = 1;
+              nextBolt = t + 3500 + Math.random() * 7000;
+            }
+            if (flash > 0.01) {
+              rctx.fillStyle = "rgba(255,255,255," + (flash * 0.3).toFixed(3) + ")";
+              rctx.fillRect(0, 0, W, H);
+              flash *= 0.86;
+            }
+          }
+
+          requestAnimationFrame(paint);
+        }
+
+        // ---- refresh data cuaca tiap 10 menit (gagal = tetap pakai snapshot) ----
+        function refreshWx() {
+          var ctl = new AbortController();
+          var to = setTimeout(function () {
+            ctl.abort();
+          }, 7000);
+          fetch(API + "&_=" + Date.now(), { signal: ctl.signal, cache: "no-store" })
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (j) {
+              clearTimeout(to);
+              var c = j && j.current;
+              if (!c) return;
+              WX.cloud = c.cloud_cover;
+              WX.precip = c.precipitation;
+              WX.code = c.weather_code;
+              WX.temp = c.temperature_2m;
+              WX.wind = c.wind_speed_10m;
+              WX.at = c.time;
+            })
+            .catch(function () {
+              clearTimeout(to);
+            });
+        }
+
+        sizeCanvas();
+        window.addEventListener("resize", sizeCanvas);
+        refreshWx();
+        setInterval(refreshWx, 600000);
+        requestAnimationFrame(paint);
+      })();
+    </script>
+  </body>
+</html>
