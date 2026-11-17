@@ -1,5 +1,7 @@
 # openbot-weather-backdrop
 
+Bahasa / Language: [Indonesia](README.md) | **English**
+
 Landscape hidup dengan cuaca live Jakarta, dibuat sebagai backdrop untuk OpenBot.
 
 - Langit bergeser mengikuti jam WIB (UTC+7), dari fajar sampai malam
